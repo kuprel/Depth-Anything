@@ -59,7 +59,7 @@ if __name__ == '__main__':
         output_width = frame_width
 
         filename = os.path.basename(filename)
-        output_path = 'depth.mp4'
+        output_path = '../depth.mp4'
         out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (output_width, frame_height))
 
         while raw_video.isOpened():
