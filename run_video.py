@@ -61,7 +61,7 @@ if __name__ == '__main__':
         output_width = frame_width
 
         filename = os.path.basename(filename)
-        output_path = os.path.join(args.outdir, filename[:filename.rfind('.')] + '_video_depth.mp4')
+        output_path = os.path.join(args.outdir, filename[:filename.rfind('.')] + '_depth.mp4')
         out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (output_width, frame_height))
 
         while raw_video.isOpened():
@@ -80,9 +80,8 @@ if __name__ == '__main__':
             depth = F.interpolate(depth[None], (frame_height, frame_width), mode='bilinear', align_corners=False)[0, 0]
             depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
 
-            depth = depth.cpu().numpy()
-            # depth = depth.cpu().numpy().astype(np.uint8)
-            # depth_color = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
+            depth = depth.cpu().numpy().astype(np.uint8)
+            depth = cv2.cvtColor(depth, cv2.COLOR_GRAY2BGR)
 
             out.write(depth)
 
