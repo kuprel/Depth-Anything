@@ -81,9 +81,9 @@ if __name__ == '__main__':
             depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
 
             depth = depth.cpu().numpy().astype(np.uint8)
-            depth_color = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
+            # depth_color = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
 
-            out.write(depth_color)
+            out.write(depth)
 
         raw_video.release()
         out.release()
