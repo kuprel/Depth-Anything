@@ -114,7 +114,8 @@ if __name__ == '__main__':
             depth_map = cv2.blur(depth_map, (3, 3))
             ipd = 6.34
             right_img = generate_stereo(left_img, depth_map, ipd)
-            stereo = np.hstack([left_img, right_img])
+            # stereo = np.hstack([left_img, right_img])
+            stereo = np.hstack([right_img, left_img])
             stereo_bgr = cv2.cvtColor(stereo, cv2.COLOR_RGB2BGR)
 
             depth = depth.cpu().numpy().astype(np.uint8)
