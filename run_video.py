@@ -13,7 +13,7 @@ from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--video-path', type=str)
-    parser.add_argument('--outdir', type=str, default='./vis_video_depth')
+    parser.add_argument('--outdir', type=str, default='.')
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
 
     args = parser.parse_args()
@@ -50,8 +50,6 @@ if __name__ == '__main__':
         filenames = [os.path.join(args.video_path, filename) for filename in filenames if not filename.startswith('.')]
         filenames.sort()
 
-    os.makedirs(args.outdir, exist_ok=True)
-
     for k, filename in enumerate(filenames):
         print('Progress {:}/{:},'.format(k+1, len(filenames)), 'Processing', filename)
 
@@ -61,7 +59,7 @@ if __name__ == '__main__':
         output_width = frame_width
 
         filename = os.path.basename(filename)
-        output_path = os.path.join(args.outdir, filename[:filename.rfind('.')] + '_depth.mp4')
+        output_path = 'depth.mp4'
         out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (output_width, frame_height))
 
         while raw_video.isOpened():
