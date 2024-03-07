@@ -43,7 +43,6 @@ def generate_stereo(left_img, depth, ipd):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--video-path', type=str)
-    parser.add_argument('--outdir', type=str, default='.')
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
 
     args = parser.parse_args()
@@ -86,11 +85,13 @@ if __name__ == '__main__':
         raw_video = cv2.VideoCapture(filename)
         frame_width, frame_height = int(raw_video.get(cv2.CAP_PROP_FRAME_WIDTH)), int(raw_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frame_rate = int(raw_video.get(cv2.CAP_PROP_FPS))
-        output_width = frame_width * 2
+        stereo_width = frame_width * 2
 
         filename = os.path.basename(filename)
-        output_path = '../stereo.mp4'
-        out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (output_width, frame_height))
+        out_path_stereo = args.video_path.replace('.mp4', '_stereo.mp4')
+        out_path_depth = args.video_path.replace('.mp4', '_depth.mp4')
+        out_stereo = cv2.VideoWriter(out_path_stereo, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (stereo_width, frame_height))
+        out_depth = cv2.VideoWriter(out_path_depth, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (frame_width, frame_height))
 
         while raw_video.isOpened():
             ret, raw_frame = raw_video.read()
@@ -121,7 +122,9 @@ if __name__ == '__main__':
             depth = depth.cpu().numpy().astype(np.uint8)
             depth = cv2.cvtColor(depth, cv2.COLOR_GRAY2BGR)
 
-            out.write(stereo_bgr)
+            out_stereo.write(stereo_bgr)
+            out_depth.write(depth)
 
         raw_video.release()
-        out.release()
+        out_stereo.release()
+        out_depth.release()
