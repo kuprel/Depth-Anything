@@ -183,33 +183,6 @@ class Resize(object):
             interpolation=self.__image_interpolation_method,
         )
 
-        if self.__resize_target:
-            if "disparity" in sample:
-                sample["disparity"] = cv2.resize(
-                    sample["disparity"],
-                    (width, height),
-                    interpolation=cv2.INTER_NEAREST,
-                )
-
-            if "depth" in sample:
-                sample["depth"] = cv2.resize(
-                    sample["depth"], (width, height), interpolation=cv2.INTER_NEAREST
-                )
-
-            if "semseg_mask" in sample:
-                # sample["semseg_mask"] = cv2.resize(
-                #     sample["semseg_mask"], (width, height), interpolation=cv2.INTER_NEAREST
-                # )
-                sample["semseg_mask"] = F.interpolate(torch.from_numpy(sample["semseg_mask"]).float()[None, None, ...], (height, width), mode='nearest').numpy()[0, 0]
-
-            if "mask" in sample:
-                sample["mask"] = cv2.resize(
-                    sample["mask"].astype(np.float32),
-                    (width, height),
-                    interpolation=cv2.INTER_NEAREST,
-                )
-                # sample["mask"] = sample["mask"].astype(bool)
-
         # print(sample['image'].shape, sample['depth'].shape)
         return sample
 
@@ -266,7 +239,10 @@ if __name__ == '__main__':
         if not is_frame: break
 
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB) / 255.0
+        frame_rgb_ = cv2.resize(frame_rgb, (depth_width, depth_height), interpolation=cv2.INTER_CUBIC)
+        print(frame_rgb_.shape)
         frame_rgb = transform({'image': frame_rgb})['image']
+        print(frame_rgb.shape)
         frame_rgb -= np.array([0.485, 0.456, 0.406])
         frame_rgb /= np.array([0.229, 0.224, 0.225])
         frame_rgb = np.transpose(frame_rgb, (2, 0, 1))
