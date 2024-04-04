@@ -21,7 +21,7 @@ if __name__ == '__main__':
     depth_model = depth_model.to(device).eval()
 
     depth_height = 518
-    batch_size = 8
+    batch_size = 16
 
     path_rgb = args.video_path
     path_depth = path_rgb.replace('.mp4', '_depth.mp4')
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     t0 = time.time()
     for i in range(batch_count):
         fps = i * batch_size / (time.time() - t0)
-        print(f'Frame {i * batch_size} of {frame_count}, FPS: {fps}')
+        print(f'Frame {i * batch_size} of {frame_count}, FPS: {fps:.2f}')
 
         frames_rgb = [video_rgb.read()[1] for _ in range(batch_size)]
 
