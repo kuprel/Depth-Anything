@@ -55,11 +55,11 @@ if __name__ == '__main__':
 
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         frame_rgb = torch.tensor(frame_rgb, device=device, dtype=torch.float32)
-        frame_rgb /= 255
-        frame_rgb -= rgb_mean
-        frame_rgb /= rgb_std
         frame_rgb = frame_rgb.permute(2, 0, 1)
         frame_rgb = rgb_resize.forward(frame_rgb)
+        frame_rgb /= 255
+        frame_rgb -= rgb_mean[:, None, None]
+        frame_rgb /= rgb_std[:, None, None]
         frame_rgb = frame_rgb.unsqueeze(0).to(device)
 
         with torch.no_grad():
