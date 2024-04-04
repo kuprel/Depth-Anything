@@ -51,14 +51,17 @@ if __name__ == '__main__':
 
         frames_rgb = []
         for i in range(batch_size):
-            is_frame, frame_rgb = video_rgb.read()
+            is_frame, frame = video_rgb.read()
             if not is_frame: break
-            frames_rgb.append(frame_rgb)
+            frames_rgb.append(frame)
 
-        print(len(frames_rgb))
-        frames_rgb = torch.tensor(frames_rgb, device=device, dtype=torch.float32)
-        print(frames_rgb.shape)
+        frames_rgb = torch.stack([
+            torch.tensor(frame, device=device, dtype=torch.float32)
+            for frame in frames_rgb
+        ])
+        if i == 0: print('frames shape', frames_rgb.shape)
         frames_rgb = frames_rgb.permute(0, 3, 1, 2).flip(1)
+        if i == 0: print('frames shape', frames_rgb.shape)
 
         # frame_rgb = frame_rgb.permute(2, 0, 1).flip(0)
         print(frames_rgb.shape)
