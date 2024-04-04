@@ -1,44 +1,13 @@
 import argparse
 import cv2
-import numpy as np
-import os
+import time
+import math
 import torch
-import torch.nn.functional as F
+from torch import Tensor
 from torchvision.transforms import Compose
-from PIL import Image
 
 from depth_anything.dpt import DepthAnything
 from depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
-
-def generate_stereo(left_img, depth, ipd):
-    monitor_w = 38.5
-    h, w, _ = left_img.shape
-    depth_normalized = (depth - depth.min()) / (depth.max() - depth.min())
-    right = np.zeros_like(left_img)
-    deviation_cm = ipd * 0.12
-    deviation = deviation_cm * monitor_w * (w / 1920)
-    col_r_shift = (1 - depth_normalized ** 2) * deviation
-    col_r_indices = np.arange(w) - col_r_shift.astype(int)
-    valid_indices = col_r_indices >= 0
-    for row in range(h):
-        valid_cols = col_r_indices[row, valid_indices[row]]
-        right[row, valid_cols] = left_img[row, np.arange(w)[valid_indices[row]]]
-
-    right_fix = right.copy()
-    gray = cv2.cvtColor(right_fix, cv2.COLOR_BGR2GRAY)
-    missing_pixels = np.where(gray == 0)
-    for row, col in zip(*missing_pixels):
-        for offset in range(1, int(deviation)):
-            r_offset = min(col + offset, w - 1)
-            l_offset = max(col - offset, 0)
-            if not np.all(right_fix[row, r_offset] == 0):
-                right_fix[row, col] = right_fix[row, r_offset]
-                break
-            elif not np.all(right_fix[row, l_offset] == 0):
-                right_fix[row, col] = right_fix[row, l_offset]
-                break
-
-    return right_fix
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -46,18 +15,17 @@ if __name__ == '__main__':
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
 
     args = parser.parse_args()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    depth_model = 'LiheYoung/depth_anything_{}14'.format(args.encoder)
+    depth_model = DepthAnything.from_pretrained(depth_model)
+    depth_model = depth_model.to(device).eval()
 
-    DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    depth_anything = DepthAnything.from_pretrained('LiheYoung/depth_anything_{}14'.format(args.encoder)).to(DEVICE).eval()
-
-    total_params = sum(param.numel() for param in depth_anything.parameters())
-    print('Total parameters: {:.2f}M'.format(total_params / 1e6))
+    depth_height = 518
 
     transform = Compose([
         Resize(
-            width=518,
-            height=518,
+            width=depth_height,
+            height=depth_height,
             resize_target=False,
             keep_aspect_ratio=True,
             ensure_multiple_of=14,
@@ -68,63 +36,48 @@ if __name__ == '__main__':
         PrepareForNet(),
     ])
 
-    if os.path.isfile(args.video_path):
-        if args.video_path.endswith('txt'):
-            with open(args.video_path, 'r') as f:
-                lines = f.read().splitlines()
-        else:
-            filenames = [args.video_path]
-    else:
-        filenames = os.listdir(args.video_path)
-        filenames = [os.path.join(args.video_path, filename) for filename in filenames if not filename.startswith('.')]
-        filenames.sort()
+    path_rgb = args.video_path
+    path_depth = path_rgb.replace('.mp4', '_depth.mp4')
 
-    for k, filename in enumerate(filenames):
-        print('Progress {:}/{:},'.format(k+1, len(filenames)), 'Processing', filename)
+    video_rgb = cv2.VideoCapture(path_rgb)
+    frame_width, frame_height = int(video_rgb.get(cv2.CAP_PROP_FRAME_WIDTH)), int(video_rgb.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    depth_width = frame_width / frame_height * depth_height
+    depth_width = math.ceil(depth_width / 14) * 14
+    print("Depth Width", depth_width)
+    # frame_rate = int(video_rgb.get(cv2.CAP_PROP_FPS))
+    frame_rate = 30
+    frame_count = int(video_rgb.get(cv2.CAP_PROP_FRAME_COUNT))
+    video_depth = cv2.VideoWriter(path_depth, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (depth_height, depth_width))
 
-        raw_video = cv2.VideoCapture(filename)
-        frame_width, frame_height = int(raw_video.get(cv2.CAP_PROP_FRAME_WIDTH)), int(raw_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        frame_rate = int(raw_video.get(cv2.CAP_PROP_FPS))
-        stereo_width = frame_width * 2
+    msg = "Frame height: {}, Frame width: {}, Frame rate: {}, Frame count: {}"
+    print(msg.format(frame_height, frame_width, frame_rate, frame_count))
 
-        filename = os.path.basename(filename)
-        out_path_stereo = args.video_path.replace('.mp4', '_stereo.mp4')
-        out_path_depth = args.video_path.replace('.mp4', '_depth.mp4')
-        out_stereo = cv2.VideoWriter(out_path_stereo, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (stereo_width, frame_height))
-        out_depth = cv2.VideoWriter(out_path_depth, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (frame_width, frame_height))
+    i, t0 = 0, time.time()
+    while video_rgb.isOpened():
+        i += 1
+        if i % 10 == 0:
+            print(f'Frame {i} of {frame_count}, FPS: {i / (time.time() - t0):.2f}')
 
-        while raw_video.isOpened():
-            ret, raw_frame = raw_video.read()
-            if not ret:
-                break
+        is_frame, frame_rgb = video_rgb.read()
+        if not is_frame: break
 
-            frame = cv2.cvtColor(raw_frame, cv2.COLOR_BGR2RGB) / 255.0
-            frame_pil =  Image.fromarray((frame * 255).astype(np.uint8))
+        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB) / 255.0
+        frame_rgb = transform({'image': frame_rgb})['image']
+        frame_rgb = torch.from_numpy(frame_rgb).unsqueeze(0).to(device)
 
-            frame = transform({'image': frame})['image']
-            frame = torch.from_numpy(frame).unsqueeze(0).to(DEVICE)
+        with torch.no_grad():
+            frame_depth: Tensor = depth_model(frame_rgb)
 
-            with torch.no_grad():
-                depth = depth_anything(frame)
+        print("depth_frame", frame_depth.shape)
+        assert(depth_width == frame_depth.shape[3])
+        assert(depth_width == frame_rgb.shape[3])
 
-            depth = F.interpolate(depth[None], (frame_height, frame_width), mode='bilinear', align_corners=False)[0, 0]
-            depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
+        frame_depth -= frame_depth.min()
+        frame_depth /= frame_depth.max()
+        frame_depth = (frame_depth[0] * 255).to(torch.uint8).cpu().numpy()
+        frame_depth = cv2.cvtColor(frame_depth, cv2.COLOR_GRAY2BGR)
 
-            depth_map = depth.cpu().numpy().astype(np.uint8)
-            left_img = np.array(frame_pil)
-            depth_map = cv2.blur(depth_map, (3, 3))
-            ipd = 6.34
-            right_img = generate_stereo(left_img, depth_map, ipd)
-            # stereo = np.hstack([left_img, right_img])
-            stereo = np.hstack([right_img, left_img])
-            stereo_bgr = cv2.cvtColor(stereo, cv2.COLOR_RGB2BGR)
+        video_depth.write(frame_depth)
 
-            depth = depth.cpu().numpy().astype(np.uint8)
-            depth = cv2.cvtColor(depth, cv2.COLOR_GRAY2BGR)
-
-            out_stereo.write(stereo_bgr)
-            out_depth.write(depth)
-
-        raw_video.release()
-        out_stereo.release()
-        out_depth.release()
+    video_rgb.release()
+    video_depth.release()
