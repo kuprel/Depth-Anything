@@ -53,26 +53,21 @@ if __name__ == '__main__':
         is_frame, frame_rgb = video_rgb.read()
         if not is_frame: break
 
-        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         frame_rgb = torch.tensor(frame_rgb, device=device, dtype=torch.float32)
         frame_rgb = frame_rgb.permute(2, 0, 1)
         frame_rgb = rgb_resize.forward(frame_rgb)
+        frame_rgb = frame_rgb[::-1]
         frame_rgb /= 255
         frame_rgb -= rgb_mean[:, None, None]
         frame_rgb /= rgb_std[:, None, None]
-        frame_rgb = frame_rgb.unsqueeze(0).to(device)
-
-        with torch.no_grad():
-            frame_depth = depth_model.forward(frame_rgb)
-
-        assert(depth_width == frame_depth.shape[-1])
-        assert(depth_width == frame_rgb.shape[-1])
-
+        frame_rgb = frame_rgb.unsqueeze(0)
+        frame_depth = depth_model.forward(frame_rgb)
         frame_depth -= frame_depth.min()
         frame_depth /= frame_depth.max()
-        frame_depth = (frame_depth[0] * 255).to(torch.uint8).cpu().numpy()
-        frame_depth = cv2.cvtColor(frame_depth, cv2.COLOR_GRAY2BGR)
+        frame_depth = (frame_depth[0] * 255).to(torch.uint8)
 
+        frame_depth = frame_depth.cpu().numpy()
+        frame_depth = cv2.cvtColor(frame_depth, cv2.COLOR_GRAY2BGR)
         video_depth.write(frame_depth)
 
     video_rgb.release()
