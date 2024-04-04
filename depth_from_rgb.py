@@ -34,7 +34,8 @@ if __name__ == '__main__':
     # frame_rate = int(video_rgb.get(cv2.CAP_PROP_FPS))
     frame_rate = 30
     frame_count = int(video_rgb.get(cv2.CAP_PROP_FRAME_COUNT))
-    frame_count = frame_count // batch_size * batch_size
+    batch_count = frame_count // batch_size
+    frame_count = batch_count * batch_size
     video_depth = cv2.VideoWriter(path_depth, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (depth_width, depth_height))
 
     msg = "Frame height: {}, Frame width: {}, Frame rate: {}, Frame count: {}"
@@ -45,9 +46,8 @@ if __name__ == '__main__':
     rgb_resize = torchvision.transforms.Resize((depth_height, depth_width))
 
     t0 = time.time()
-    for i in range(frame_count):
-        if i % batch_size == 0:
-            print(f'Frame {i} of {frame_count}, FPS: {i / (time.time() - t0):.2f}')
+    for i in range(batch_count):
+        print(f'Frame {i * batch_size} of {frame_count}, FPS: {i / (time.time() - t0):.2f}')
 
         frames_rgb = [video_rgb.read()[1] for _ in range(batch_size)]
 
