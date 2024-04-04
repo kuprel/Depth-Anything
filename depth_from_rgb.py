@@ -47,7 +47,8 @@ if __name__ == '__main__':
 
     t0 = time.time()
     for i in range(batch_count):
-        print(f'Frame {i * batch_size} of {frame_count}, FPS: {i / (time.time() - t0):.2f}')
+        fps = i * batch_size / (time.time() - t0)
+        print(f'Frame {i * batch_size} of {frame_count}, FPS: {fps}')
 
         frames_rgb = [video_rgb.read()[1] for _ in range(batch_size)]
 
