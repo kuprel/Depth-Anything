@@ -69,8 +69,8 @@ if __name__ == '__main__':
             frame_depth: Tensor = depth_model(frame_rgb)
 
         print("depth_frame", frame_depth.shape)
-        assert(depth_width == frame_depth.shape[3])
-        assert(depth_width == frame_rgb.shape[3])
+        assert(depth_width == frame_depth.shape[-1])
+        assert(depth_width == frame_rgb.shape[-1])
 
         frame_depth -= frame_depth.min()
         frame_depth /= frame_depth.max()
