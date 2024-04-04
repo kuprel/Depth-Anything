@@ -195,6 +195,7 @@ class DPT_DINOv2(nn.Module):
         }[encoder]
 
         self.pretrained = DinoVisionTransformer(
+            img_size=518,
             patch_size=14,
             embed_dim=embed_dim,
             depth=depth,
