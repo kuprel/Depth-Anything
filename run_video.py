@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # frame_rate = int(video_rgb.get(cv2.CAP_PROP_FPS))
     frame_rate = 30
     frame_count = int(video_rgb.get(cv2.CAP_PROP_FRAME_COUNT))
-    video_depth = cv2.VideoWriter(path_depth, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (depth_height, depth_width))
+    video_depth = cv2.VideoWriter(path_depth, cv2.VideoWriter_fourcc(*"mp4v"), frame_rate, (depth_width, depth_height))
 
     msg = "Frame height: {}, Frame width: {}, Frame rate: {}, Frame count: {}"
     print(msg.format(frame_height, frame_width, frame_rate, frame_count))
