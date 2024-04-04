@@ -8,7 +8,7 @@ from huggingface_hub import PyTorchModelHubMixin
 from depth_anything.blocks import FeatureFusionBlock
 from vision_transformer import DinoVisionTransformer
 
-from dinov2.layers import NestedTensorBlock, MemEffAttention
+from dinov2.layers import NestedTensorBlock as Block, MemEffAttention
 
 CONFIGS = {
     'vits': {'features': 64, 'out_channels': [48, 96, 192, 384]},
@@ -200,7 +200,7 @@ class DPT_DINOv2(nn.Module):
             embed_dim=embed_dim,
             depth=depth,
             num_heads=num_heads,
-            block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention),
+            block_fn=partial(Block, attn_class=MemEffAttention),
             block_chunks=0
         )
 
