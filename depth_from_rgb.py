@@ -4,6 +4,7 @@ import time
 import math
 import numpy
 import torch
+import torchvision.transforms
 from torch import Tensor
 
 from depth_anything import DepthAnything
@@ -39,6 +40,9 @@ if __name__ == '__main__':
     msg = "Frame height: {}, Frame width: {}, Frame rate: {}, Frame count: {}"
     print(msg.format(frame_height, frame_width, frame_rate, frame_count))
 
+    rgb_mean = torch.tensor([0.485, 0.456, 0.406], device=device, dtype=torch.float32)
+    rgb_std = torch.tensor([0.229, 0.224, 0.225], device=device, dtype=torch.float32)
+
     i, t0 = 0, time.time()
     while video_rgb.isOpened():
         i += 1
@@ -50,11 +54,12 @@ if __name__ == '__main__':
 
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB) / 255.0
         frame_rgb = cv2.resize(frame_rgb, (depth_width, depth_height), interpolation=cv2.INTER_CUBIC)
-        frame_rgb -= numpy.array([0.485, 0.456, 0.406])
-        frame_rgb /= numpy.array([0.229, 0.224, 0.225])
-        frame_rgb = numpy.transpose(frame_rgb, (2, 0, 1))
-        frame_rgb = numpy.ascontiguousarray(frame_rgb).astype(numpy.float32)
-        frame_rgb = torch.from_numpy(frame_rgb).unsqueeze(0).to(device)
+        # frame_rgb = torchvision.transforms.Resize((depth_height, depth_width))(frame_rgb)
+        frame_rgb = torch.tensor(frame_rgb, device=device, dtype=torch.float32)
+        frame_rgb -= rgb_mean
+        frame_rgb /= rgb_std
+        frame_rgb = frame_rgb.permute(2, 0, 1)
+        frame_rgb = frame_rgb.unsqueeze(0).to(device)
 
         with torch.no_grad():
             frame_depth: Tensor = depth_model(frame_rgb)
