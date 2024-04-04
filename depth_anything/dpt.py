@@ -1,20 +1,9 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from functools import partial
-
-from huggingface_hub import PyTorchModelHubMixin
-
 from depth_anything.blocks import FeatureFusionBlock
 from vision_transformer import DinoVisionTransformer
-
 from dinov2.layers import NestedTensorBlock, MemEffAttention
-
-CONFIGS = {
-    'vits': {'features': 64, 'out_channels': [48, 96, 192, 384]},
-    'vitb': {'features': 128, 'out_channels': [96, 192, 384, 768]},
-    'vitl': {'features': 256, 'out_channels': [256, 512, 1024, 1024]}
-}
 
 def _make_scratch(in_shape, out_shape, groups=1, expand=False):
     scratch = nn.Module()
@@ -184,16 +173,14 @@ class DPTHead(nn.Module):
         return out
 
 
-class DPT_DINOv2(nn.Module):
-    def __init__(self, encoder='vitl', features=256, out_channels=[256, 512, 1024, 1024], **kwargs):
-        super(DPT_DINOv2, self).__init__()
+class DepthAnything(nn.Module):
+    def __init__(self, encoder: str):
+        super().__init__()
 
-        # features, out_channels = CONFIGS[encoder]['features'], CONFIGS[encoder]['out_channels']
-
-        embed_dim, depth, num_heads = {
-            'vits': (384, 12, 6),
-            'vitb': (768, 12, 12),
-            'vitl': (1024, 24, 16)
+        embed_dim, depth, num_heads, features, out_channels = {
+            'vits': (384, 12, 6, 64, [48, 96, 192, 384]),
+            'vitb': (768, 12, 12, 128, [96, 192, 384, 768]),
+            'vitl': (1024, 24, 16, 256, [256, 512, 1024, 1024])
         }[encoder]
 
         self.pretrained = DinoVisionTransformer(
@@ -211,11 +198,9 @@ class DPT_DINOv2(nn.Module):
             block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention)
         )
 
-        dim = self.pretrained.blocks[0].attn.qkv.in_features
-
         self.depth_head = DPTHead(
             nclass=1,
-            in_channels=dim,
+            in_channels=embed_dim,
             features=features,
             out_channels=out_channels
         )
@@ -232,8 +217,3 @@ class DPT_DINOv2(nn.Module):
         depth = F.relu(depth)
 
         return depth.squeeze(1)
-
-
-class DepthAnything(DPT_DINOv2, PyTorchModelHubMixin):
-    def __init__(self, config):
-        super().__init__(**config)
