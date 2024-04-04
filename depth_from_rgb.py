@@ -42,6 +42,7 @@ if __name__ == '__main__':
 
     rgb_mean = torch.tensor([0.485, 0.456, 0.406], device=device, dtype=torch.float32)
     rgb_std = torch.tensor([0.229, 0.224, 0.225], device=device, dtype=torch.float32)
+    rgb_resize = torchvision.transforms.Resize((depth_height, depth_width))
 
     i, t0 = 0, time.time()
     while video_rgb.isOpened():
@@ -53,16 +54,18 @@ if __name__ == '__main__':
         if not is_frame: break
 
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB) / 255.0
-        frame_rgb = cv2.resize(frame_rgb, (depth_width, depth_height), interpolation=cv2.INTER_CUBIC)
+        # frame_rgb = cv2.resize(frame_rgb, (depth_width, depth_height), interpolation=cv2.INTER_CUBIC)
         # frame_rgb = torchvision.transforms.Resize((depth_height, depth_width))(frame_rgb)
         frame_rgb = torch.tensor(frame_rgb, device=device, dtype=torch.float32)
+        frame_rgb = rgb_resize.forward(frame_rgb)
+
         frame_rgb -= rgb_mean
         frame_rgb /= rgb_std
         frame_rgb = frame_rgb.permute(2, 0, 1)
         frame_rgb = frame_rgb.unsqueeze(0).to(device)
 
         with torch.no_grad():
-            frame_depth: Tensor = depth_model(frame_rgb)
+            frame_depth = depth_model.forward(frame_rgb)
 
         assert(depth_width == frame_depth.shape[-1])
         assert(depth_width == frame_rgb.shape[-1])

@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 from functools import partial
 from vision_transformer import DinoVisionTransformer
 from dinov2.layers import NestedTensorBlock, MemEffAttention
@@ -323,7 +324,7 @@ class DepthAnything(nn.Module):
             out_channels=out_channels
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         h, w = x.shape[-2:]
 
         features = self.pretrained.get_intermediate_layers(x, 4, return_class_token=True)
