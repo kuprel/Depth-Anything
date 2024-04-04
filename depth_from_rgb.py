@@ -228,32 +228,6 @@ class NormalizeImage(object):
         return sample
 
 
-class PrepareForNet(object):
-    """Prepare sample for usage as network input.
-    """
-
-    def __init__(self):
-        pass
-
-    def __call__(self, sample):
-        image = np.transpose(sample["image"], (2, 0, 1))
-        sample["image"] = np.ascontiguousarray(image).astype(np.float32)
-
-        if "mask" in sample:
-            sample["mask"] = sample["mask"].astype(np.float32)
-            sample["mask"] = np.ascontiguousarray(sample["mask"])
-
-        if "depth" in sample:
-            depth = sample["depth"].astype(np.float32)
-            sample["depth"] = np.ascontiguousarray(depth)
-
-        if "semseg_mask" in sample:
-            sample["semseg_mask"] = sample["semseg_mask"].astype(np.float32)
-            sample["semseg_mask"] = np.ascontiguousarray(sample["semseg_mask"])
-
-        return sample
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--video-path', type=str)
@@ -278,8 +252,7 @@ if __name__ == '__main__':
             resize_method='lower_bound',
             image_interpolation_method=cv2.INTER_CUBIC,
         ),
-        NormalizeImage(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        PrepareForNet(),
+        NormalizeImage(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     path_rgb = args.video_path
@@ -309,6 +282,8 @@ if __name__ == '__main__':
 
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB) / 255.0
         frame_rgb = transform({'image': frame_rgb})['image']
+        frame_rgb = np.transpose(frame_rgb, (2, 0, 1))
+        frame_rgb = np.ascontiguousarray(frame_rgb).astype(np.float32)
         frame_rgb = torch.from_numpy(frame_rgb).unsqueeze(0).to(device)
 
         with torch.no_grad():
