@@ -11,6 +11,7 @@ from depth_anything import DepthAnything
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--video-path', type=str)
+    parser.add_argument('--batch-size', type=int, default=4)
     parser.add_argument('--encoder', type=str, default='vitl', choices=['vits', 'vitb', 'vitl'])
 
     args = parser.parse_args()
@@ -21,7 +22,7 @@ if __name__ == '__main__':
     depth_model = depth_model.to(device).eval()
 
     depth_height = 518
-    batch_size = 16
+    batch_size = args.batch_size
 
     path_rgb = args.video_path
     path_depth = path_rgb.replace('.mp4', '_depth.mp4')
@@ -56,14 +57,9 @@ if __name__ == '__main__':
             torch.tensor(frame, device=device, dtype=torch.float32)
             for frame in frames_rgb
         ])
-        if i == 0: print('frames shape', frames_rgb.shape)
         frames_rgb = frames_rgb.permute(0, 3, 1, 2).flip(1)
-        if i == 0: print('frames shape', frames_rgb.shape)
 
-        # frame_rgb = frame_rgb.permute(2, 0, 1).flip(0)
-        print(frames_rgb.shape)
         frames_rgb = rgb_resize.forward(frames_rgb)
-        print(frames_rgb.shape)
         frames_rgb /= 255
         frames_rgb -= rgb_mean[None, :, None, None]
         frames_rgb /= rgb_std[None, :, None, None]
