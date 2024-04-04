@@ -1,39 +1,5 @@
 import torch.nn as nn
 
-
-def _make_scratch(in_shape, out_shape, groups=1, expand=False):
-    scratch = nn.Module()
-
-    out_shape1 = out_shape
-    out_shape2 = out_shape
-    out_shape3 = out_shape
-    if len(in_shape) >= 4:
-        out_shape4 = out_shape
-
-    if expand:
-        out_shape1 = out_shape
-        out_shape2 = out_shape*2
-        out_shape3 = out_shape*4
-        if len(in_shape) >= 4:
-            out_shape4 = out_shape*8
-
-    scratch.layer1_rn = nn.Conv2d(
-        in_shape[0], out_shape1, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-    )
-    scratch.layer2_rn = nn.Conv2d(
-        in_shape[1], out_shape2, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-    )
-    scratch.layer3_rn = nn.Conv2d(
-        in_shape[2], out_shape3, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-    )
-    if len(in_shape) >= 4:
-        scratch.layer4_rn = nn.Conv2d(
-            in_shape[3], out_shape4, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-        )
-
-    return scratch
-
-
 class ResidualConvUnit(nn.Module):
     """Residual convolution module.
     """
@@ -53,7 +19,7 @@ class ResidualConvUnit(nn.Module):
         self.conv1 = nn.Conv2d(
             features, features, kernel_size=3, stride=1, padding=1, bias=True, groups=self.groups
         )
-        
+
         self.conv2 = nn.Conv2d(
             features, features, kernel_size=3, stride=1, padding=1, bias=True, groups=self.groups
         )
@@ -75,12 +41,12 @@ class ResidualConvUnit(nn.Module):
         Returns:
             tensor: output
         """
-        
+
         out = self.activation(x)
         out = self.conv1(out)
         if self.bn==True:
             out = self.bn1(out)
-       
+
         out = self.activation(out)
         out = self.conv2(out)
         if self.bn==True:
@@ -113,12 +79,12 @@ class FeatureFusionBlock(nn.Module):
         out_features = features
         if self.expand==True:
             out_features = features//2
-        
+
         self.out_conv = nn.Conv2d(features, out_features, kernel_size=1, stride=1, padding=0, bias=True, groups=1)
 
         self.resConfUnit1 = ResidualConvUnit(features, activation, bn)
         self.resConfUnit2 = ResidualConvUnit(features, activation, bn)
-        
+
         self.skip_add = nn.quantized.FloatFunctional()
 
         self.size=size
