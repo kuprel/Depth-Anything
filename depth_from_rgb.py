@@ -56,7 +56,7 @@ if __name__ == '__main__':
         frame_rgb = torch.tensor(frame_rgb, device=device, dtype=torch.float32)
         frame_rgb = frame_rgb.permute(2, 0, 1)
         frame_rgb = rgb_resize.forward(frame_rgb)
-        frame_rgb = frame_rgb[::-1]
+        frame_rgb = frame_rgb[[2, 1, 0]]
         frame_rgb /= 255
         frame_rgb -= rgb_mean[:, None, None]
         frame_rgb /= rgb_std[:, None, None]
