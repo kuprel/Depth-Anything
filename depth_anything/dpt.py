@@ -1,10 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from functools import partial
+
 from huggingface_hub import PyTorchModelHubMixin
 
 from depth_anything.blocks import FeatureFusionBlock
-import vision_transformer
+from vision_transformer import DinoVisionTransformer
+
+from dinov2.layers import NestedTensorBlock, MemEffAttention
 
 CONFIGS = {
     'vits': {'features': 64, 'out_channels': [48, 96, 192, 384]},
@@ -185,20 +189,62 @@ class DPT_DINOv2(nn.Module):
         super(DPT_DINOv2, self).__init__()
 
         arch = {'vitl': 'vit_large', 'vitb': 'vit_base', 'vits': 'vit_small'}[encoder]
-        vit_kwargs = dict(
-            img_size=518,
-            patch_size=14,
-            init_values=1,
-            ffn_layer='mlp',
-            block_chunks=0,
-            num_register_tokens=0,
-            interpolate_antialias=False,
-            interpolate_offset=0.1
-        )
-        # vit_kwargs.update(**kwargs)
-        self.pretrained = vision_transformer.__dict__[arch](**vit_kwargs)
+        # vit_kwargs = dict(
+        #     img_size=518,
+        #     patch_size=14,
+        #     init_values=1,
+        #     ffn_layer='mlp',
+        #     block_chunks=0,
+        #     num_register_tokens=0,
+        #     interpolate_antialias=False,
+        #     interpolate_offset=0.1
+        # )
 
-        # self.pretrained = _make_dinov2_model(arch_name=arch)
+        print('kwargs', kwargs)
+        num_heads = {'vit_small': 6, 'vit_base': 12, 'vit_large': 16}[arch]
+        embed_dim = {'vit_small': 384, 'vit_base': 768, 'vit_large': 1024}[arch]
+        depth = {'vit_small': 12, 'vit_base': 12, 'vit_large': 24}[arch]
+
+        self.pretrained = DinoVisionTransformer(
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention)
+        )
+
+        # if arch == 'vit_small':
+        #     self.pretrained = DinoVisionTransformer(
+        #         patch_size=16,
+        #         embed_dim=384,
+        #         depth=12,
+        #         num_heads=6,
+        #         mlp_ratio=4,
+        #         block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention),
+        #         num_register_tokens=0,
+        #         **kwargs,
+        #     )
+        # elif arch == 'vit_base':
+        #     self.pretrained = DinoVisionTransformer(
+        #         patch_size=16,
+        #         embed_dim=768,
+        #         depth=12,
+        #         num_heads=12,
+        #         mlp_ratio=4,
+        #         block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention),
+        #         num_register_tokens=0,
+        #         **kwargs,
+        #     )
+        # elif arch == 'vit_large':
+        #     self.pretrained = DinoVisionTransformer(
+        #         patch_size=16,
+        #         embed_dim=1024,
+        #         depth=24,
+        #         num_heads=16,
+        #         mlp_ratio=4,
+        #         block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention),
+        #         num_register_tokens=0,
+        #         **kwargs,
+        #     )
 
         dim = self.pretrained.blocks[0].attn.qkv.in_features
 
