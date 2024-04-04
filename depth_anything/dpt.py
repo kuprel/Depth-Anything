@@ -179,17 +179,57 @@ class DPTHead(nn.Module):
 
         return out
 
+import vision_transformer
+
+
+def _make_dinov2_model_name(arch_name: str, patch_size: int, num_register_tokens: int = 0) -> str:
+    compact_arch_name = arch_name.replace("_", "")[:4]
+    registers_suffix = f"_reg{num_register_tokens}" if num_register_tokens else ""
+    return f"dinov2_{compact_arch_name}{patch_size}{registers_suffix}"
+
+def _make_dinov2_model(
+    *,
+    arch_name: str = "vit_large",
+    img_size: int = 518,
+    patch_size: int = 14,
+    init_values: float = 1.0,
+    ffn_layer: str = "mlp",
+    block_chunks: int = 0,
+    num_register_tokens: int = 0,
+    interpolate_antialias: bool = False,
+    interpolate_offset: float = 0.1,
+    pretrained: bool = True,
+    weights: str = 'LVD142M',
+    **kwargs,
+):
+    model_base_name = _make_dinov2_model_name(arch_name, patch_size)
+    vit_kwargs = dict(
+        img_size=img_size,
+        patch_size=patch_size,
+        init_values=init_values,
+        ffn_layer=ffn_layer,
+        block_chunks=block_chunks,
+        num_register_tokens=num_register_tokens,
+        interpolate_antialias=interpolate_antialias,
+        interpolate_offset=interpolate_offset,
+    )
+    vit_kwargs.update(**kwargs)
+    model = vision_transformer.__dict__[arch_name](**vit_kwargs)
+
+    return model
 
 class DPT_DINOv2(nn.Module):
     def __init__(self, encoder='vitl', features=256, out_channels=[256, 512, 1024, 1024], **kwargs):
         super(DPT_DINOv2, self).__init__()
 
-        self.pretrained = torch.hub.load(
-            'torchhub/facebookresearch_dinov2_main',
-            'dinov2_{:}14'.format(encoder),
-            source='local',
-            pretrained=False
-        )
+        # self.pretrained = torch.hub.load(
+        #     'torchhub/facebookresearch_dinov2_main',
+        #     'dinov2_{:}14'.format(encoder),
+        #     source='local',
+        #     pretrained=False
+        # )
+
+        self.pretrained = _make_dinov2_model(arch_name='vit_small')
 
         dim = self.pretrained.blocks[0].attn.qkv.in_features
 
@@ -217,18 +257,3 @@ class DPT_DINOv2(nn.Module):
 class DepthAnything(DPT_DINOv2, PyTorchModelHubMixin):
     def __init__(self, config):
         super().__init__(**config)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--encoder",
-        default="vits",
-        type=str,
-        choices=["vits", "vitb", "vitl"],
-    )
-    args = parser.parse_args()
-
-    model = DepthAnything.from_pretrained("LiheYoung/depth_anything_{:}14".format(args.encoder))
-
-    print(model)

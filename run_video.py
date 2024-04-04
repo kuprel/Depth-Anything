@@ -16,8 +16,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    depth_model = 'LiheYoung/depth_anything_{}14'.format(args.encoder)
-    depth_model = DepthAnything.from_pretrained(depth_model)
+    model_name = 'LiheYoung/depth_anything_{}14'.format(args.encoder)
+    depth_model = DepthAnything.from_pretrained(model_name)
+    # torch.save(depth_model.state_dict(), 'weights/depth_anything_{}14.pt'.format(args.encoder))
     depth_model = depth_model.to(device).eval()
 
     depth_height = 518
