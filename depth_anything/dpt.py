@@ -188,6 +188,8 @@ class DPT_DINOv2(nn.Module):
     def __init__(self, encoder='vitl', features=256, out_channels=[256, 512, 1024, 1024], **kwargs):
         super(DPT_DINOv2, self).__init__()
 
+        features, out_channels = CONFIGS[encoder]['features'], CONFIGS[encoder]['out_channels']
+
         embed_dim, depth, num_heads = {
             'vits': (384, 12, 6),
             'vitb': (768, 12, 12),
@@ -201,8 +203,7 @@ class DPT_DINOv2(nn.Module):
             embed_dim=embed_dim,
             depth=depth,
             num_heads=num_heads,
-            block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention),
-            **kwargs
+            block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention)
         )
 
         dim = self.pretrained.blocks[0].attn.qkv.in_features
