@@ -201,6 +201,8 @@ class DPT_DINOv2(nn.Module):
             block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention)
         )
 
+        print(self.pretrained.blocks)
+
         dim = self.pretrained.blocks[0].attn.qkv.in_features
 
         self.depth_head = DPTHead(
