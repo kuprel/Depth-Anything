@@ -55,7 +55,9 @@ if __name__ == '__main__':
             if not is_frame: break
             frames_rgb.append(frame_rgb)
 
+        print(len(frames_rgb))
         frames_rgb = torch.tensor(frames_rgb, device=device, dtype=torch.float32)
+        print(frames_rgb.shape)
         frames_rgb = frames_rgb.permute(0, 3, 1, 2).flip(1)
 
         # frame_rgb = frame_rgb.permute(2, 0, 1).flip(0)
