@@ -196,26 +196,19 @@ class DPT_DINOv2(nn.Module):
             'vitl': (1024, 24, 16)
         }[encoder]
 
-        vit_kwargs = dict(
-            img_size=518,
-            patch_size=14,
-            init_values=1,
-            ffn_layer='mlp',
-            block_chunks=0,
-            num_register_tokens=0,
-            interpolate_antialias=False,
-            interpolate_offset=0.1
-        )
-
         self.pretrained = DinoVisionTransformer(
             img_size=518,
             patch_size=14,
             block_chunks=0,
+            init_values=1,
+            ffn_layer='mlp',
+            num_register_tokens=0,
+            interpolate_antialias=False,
+            interpolate_offset=0.1,
             embed_dim=embed_dim,
             depth=depth,
             num_heads=num_heads,
-            block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention),
-            **vit_kwargs
+            block_fn=partial(NestedTensorBlock, attn_class=MemEffAttention)
         )
 
         dim = self.pretrained.blocks[0].attn.qkv.in_features
