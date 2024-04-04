@@ -49,11 +49,7 @@ if __name__ == '__main__':
         if i % batch_size == 0:
             print(f'Frame {i} of {frame_count}, FPS: {i / (time.time() - t0):.2f}')
 
-        frames_rgb = []
-        for i in range(batch_size):
-            is_frame, frame = video_rgb.read()
-            if not is_frame: break
-            frames_rgb.append(frame)
+        frames_rgb = [video_rgb.read()[1] for _ in range(batch_size)]
 
         frames_rgb = torch.stack([
             torch.tensor(frame, device=device, dtype=torch.float32)
