@@ -193,9 +193,9 @@ class DPT_DINOv2(nn.Module):
             block_chunks=0,
             num_register_tokens=0,
             interpolate_antialias=False,
-            interpolate_offset=0.1,
+            interpolate_offset=0.1
         )
-        vit_kwargs.update(**kwargs)
+        # vit_kwargs.update(**kwargs)
         self.pretrained = vision_transformer.__dict__[arch](**vit_kwargs)
 
         # self.pretrained = _make_dinov2_model(arch_name=arch)
