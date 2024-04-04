@@ -53,15 +53,18 @@ if __name__ == '__main__':
         is_frame, frame_rgb = video_rgb.read()
         if not is_frame: break
 
-        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB) / 255.0
+        frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
         # frame_rgb = cv2.resize(frame_rgb, (depth_width, depth_height), interpolation=cv2.INTER_CUBIC)
-        # frame_rgb = torchvision.transforms.Resize((depth_height, depth_width))(frame_rgb)
         frame_rgb = torch.tensor(frame_rgb, device=device, dtype=torch.float32)
-        frame_rgb = rgb_resize.forward(frame_rgb)
-
+        frame_rgb /= 255
         frame_rgb -= rgb_mean
         frame_rgb /= rgb_std
         frame_rgb = frame_rgb.permute(2, 0, 1)
+        print(frame_rgb.shape)
+        frame_rgb = rgb_resize.forward(frame_rgb)
+        print(frame_rgb.shape)
+
+        # frame_rgb = frame_rgb.permute(2, 0, 1)
         frame_rgb = frame_rgb.unsqueeze(0).to(device)
 
         with torch.no_grad():
