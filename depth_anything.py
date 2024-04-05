@@ -1,9 +1,10 @@
-import torch.nn as nn
+from torch import nn
+import torch.nn.quantized
 import torch.nn.functional as F
 from torch import Tensor
 from functools import partial
 from vision_transformer import DinoVisionTransformer
-from dinov2.layers import NestedTensorBlock, MemEffAttention
+from layers import NestedTensorBlock, MemEffAttention
 
 class ResidualConvUnit(nn.Module):
     """Residual convolution module.
@@ -35,7 +36,7 @@ class ResidualConvUnit(nn.Module):
 
         self.activation = activation
 
-        self.skip_add = nn.quantized.FloatFunctional()
+        self.skip_add = torch.nn.quantized.FloatFunctional()
 
     def forward(self, x):
         """Forward pass.
@@ -90,7 +91,7 @@ class FeatureFusionBlock(nn.Module):
         self.resConfUnit1 = ResidualConvUnit(features, activation, bn)
         self.resConfUnit2 = ResidualConvUnit(features, activation, bn)
 
-        self.skip_add = nn.quantized.FloatFunctional()
+        self.skip_add = torch.nn.quantized.FloatFunctional()
 
         self.size=size
 

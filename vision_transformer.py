@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.utils.checkpoint
 from torch.nn.init import trunc_normal_
 
-from dinov2.layers import Mlp, PatchEmbed, SwiGLUFFNFused, NestedTensorBlock as Block
+from layers import Mlp, PatchEmbed, SwiGLUFFNFused, NestedTensorBlock
 
 
 logger = logging.getLogger("dinov2")
@@ -59,7 +59,7 @@ class DinoVisionTransformer(nn.Module):
         init_values=None,  # for layerscale: None or 0 => no layerscale
         embed_layer=PatchEmbed,
         act_layer=nn.GELU,
-        block_fn=Block,
+        block_fn=NestedTensorBlock,
         ffn_layer="mlp",
         block_chunks=1,
         num_register_tokens=0,
