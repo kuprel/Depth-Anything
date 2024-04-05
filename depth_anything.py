@@ -156,6 +156,76 @@ def _make_scratch(in_shape, out_shape, groups=1, expand=False):
 
     return scratch
 
+class ScratchBlock(nn.Module):
+    def __init__(self, in_shape, out_shape, groups=1, expand=False):
+        super().__init__()
+
+        out_shape1 = out_shape
+        out_shape2 = out_shape
+        out_shape3 = out_shape
+        if len(in_shape) >= 4:
+            out_shape4 = out_shape
+
+        if expand:
+            out_shape1 = out_shape
+            out_shape2 = out_shape*2
+            out_shape3 = out_shape*4
+            if len(in_shape) >= 4:
+                out_shape4 = out_shape*8
+
+        self.layer1_rn = nn.Conv2d(
+            in_shape[0], out_shape1, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
+        )
+        self.layer2_rn = nn.Conv2d(
+            in_shape[1], out_shape2, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
+        )
+        self.layer3_rn = nn.Conv2d(
+            in_shape[2], out_shape3, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
+        )
+        if len(in_shape) >= 4:
+            self.layer4_rn = nn.Conv2d(
+                in_shape[3], out_shape4, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
+            )
+
+        self.stem_transpose = None
+
+        self.refinenet1 = FeatureFusionBlock(
+            features=out_shape,
+            activation=nn.ReLU(False),
+            deconv=False,
+            bn=False,
+            expand=False,
+            align_corners=True,
+            size=None
+        )
+        self.refinenet2 = FeatureFusionBlock(
+            features=out_shape,
+            activation=nn.ReLU(False),
+            deconv=False,
+            bn=False,
+            expand=False,
+            align_corners=True,
+            size=None
+        )
+        self.refinenet3 = FeatureFusionBlock(
+            features=out_shape,
+            activation=nn.ReLU(False),
+            deconv=False,
+            bn=False,
+            expand=False,
+            align_corners=True,
+            size=None
+        )
+        self.refinenet4 = FeatureFusionBlock(
+            features=out_shape,
+            activation=nn.ReLU(False),
+            deconv=False,
+            bn=False,
+            expand=False,
+            align_corners=True,
+            size=None
+        )
+
 
 class DPTHead(nn.Module):
     def __init__(self, nclass, in_channels, features=256, out_channels=[256, 512, 1024, 1024]):
@@ -195,51 +265,52 @@ class DPTHead(nn.Module):
                 padding=1)
         ])
 
-        self.scratch = _make_scratch(
-            out_channels,
-            features,
-            groups=1,
-            expand=False,
-        )
+        # self.scratch = _make_scratch(
+        #     out_channels,
+        #     features,
+        #     groups=1,
+        #     expand=False,
+        # )
+        self.scratch = ScratchBlock(out_channels, features, groups=1, expand=False)
 
-        self.scratch.stem_transpose = None
+        # self.scratch.stem_transpose = None
 
-        self.scratch.refinenet1 = FeatureFusionBlock(
-            features=features,
-            activation=nn.ReLU(False),
-            deconv=False,
-            bn=False,
-            expand=False,
-            align_corners=True,
-            size=None
-        )
-        self.scratch.refinenet2 = FeatureFusionBlock(
-            features=features,
-            activation=nn.ReLU(False),
-            deconv=False,
-            bn=False,
-            expand=False,
-            align_corners=True,
-            size=None
-        )
-        self.scratch.refinenet3 = FeatureFusionBlock(
-            features=features,
-            activation=nn.ReLU(False),
-            deconv=False,
-            bn=False,
-            expand=False,
-            align_corners=True,
-            size=None
-        )
-        self.scratch.refinenet4 = FeatureFusionBlock(
-            features=features,
-            activation=nn.ReLU(False),
-            deconv=False,
-            bn=False,
-            expand=False,
-            align_corners=True,
-            size=None
-        )
+        # self.scratch.refinenet1 = FeatureFusionBlock(
+        #     features=features,
+        #     activation=nn.ReLU(False),
+        #     deconv=False,
+        #     bn=False,
+        #     expand=False,
+        #     align_corners=True,
+        #     size=None
+        # )
+        # self.scratch.refinenet2 = FeatureFusionBlock(
+        #     features=features,
+        #     activation=nn.ReLU(False),
+        #     deconv=False,
+        #     bn=False,
+        #     expand=False,
+        #     align_corners=True,
+        #     size=None
+        # )
+        # self.scratch.refinenet3 = FeatureFusionBlock(
+        #     features=features,
+        #     activation=nn.ReLU(False),
+        #     deconv=False,
+        #     bn=False,
+        #     expand=False,
+        #     align_corners=True,
+        #     size=None
+        # )
+        # self.scratch.refinenet4 = FeatureFusionBlock(
+        #     features=features,
+        #     activation=nn.ReLU(False),
+        #     deconv=False,
+        #     bn=False,
+        #     expand=False,
+        #     align_corners=True,
+        #     size=None
+        # )
 
         head_features_1 = features
         head_features_2 = 32
