@@ -124,38 +124,6 @@ class FeatureFusionBlock(nn.Module):
         return output
 
 
-def _make_scratch(in_shape, out_shape, groups=1, expand=False):
-    scratch = nn.Module()
-
-    out_shape1 = out_shape
-    out_shape2 = out_shape
-    out_shape3 = out_shape
-    if len(in_shape) >= 4:
-        out_shape4 = out_shape
-
-    if expand:
-        out_shape1 = out_shape
-        out_shape2 = out_shape*2
-        out_shape3 = out_shape*4
-        if len(in_shape) >= 4:
-            out_shape4 = out_shape*8
-
-    scratch.layer1_rn = nn.Conv2d(
-        in_shape[0], out_shape1, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-    )
-    scratch.layer2_rn = nn.Conv2d(
-        in_shape[1], out_shape2, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-    )
-    scratch.layer3_rn = nn.Conv2d(
-        in_shape[2], out_shape3, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-    )
-    if len(in_shape) >= 4:
-        scratch.layer4_rn = nn.Conv2d(
-            in_shape[3], out_shape4, kernel_size=3, stride=1, padding=1, bias=False, groups=groups
-        )
-
-    return scratch
-
 class ScratchBlock(nn.Module):
     def __init__(self, in_shape, out_shape, groups=1, expand=False):
         super().__init__()
@@ -226,6 +194,43 @@ class ScratchBlock(nn.Module):
             size=None
         )
 
+        head_features_1 = out_shape
+        head_features_2 = 32
+
+        self.output_conv1 = nn.Conv2d(
+            head_features_1,
+            head_features_1 // 2,
+            kernel_size=3,
+            stride=1,
+            padding=1
+        )
+
+        self.output_conv2 = nn.Sequential(
+            nn.Conv2d(head_features_1 // 2, head_features_2, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.Conv2d(head_features_2, 1, kernel_size=1, stride=1, padding=0),
+            nn.ReLU(True),
+            nn.Identity(),
+        )
+
+    def forward(self,
+        layer_1: Tensor, layer_2: Tensor, layer_3: Tensor, layer_4: Tensor,
+        patch_h: int, patch_w: int
+    ) -> Tensor:
+        layer_1_rn = self.layer1_rn.forward(layer_1)
+        layer_2_rn = self.layer2_rn.forward(layer_2)
+        layer_3_rn = self.layer3_rn.forward(layer_3)
+        layer_4_rn = self.layer4_rn.forward(layer_4)
+
+        path_4 = self.refinenet4.forward(layer_4_rn, size=layer_3_rn.shape[2:])
+        path_3 = self.refinenet3.forward(path_4, layer_3_rn, size=layer_2_rn.shape[2:])
+        path_2 = self.refinenet2.forward(path_3, layer_2_rn, size=layer_1_rn.shape[2:])
+        path_1 = self.refinenet1.forward(path_2, layer_1_rn)
+
+        out = self.output_conv1.forward(path_1)
+        out = F.interpolate(out, (int(patch_h * 14), int(patch_w * 14)), mode="bilinear", align_corners=True)
+        out = self.output_conv2.forward(out)
+
 
 class DPTHead(nn.Module):
     def __init__(self, nclass, in_channels, features=256, out_channels=[256, 512, 1024, 1024]):
@@ -265,72 +270,8 @@ class DPTHead(nn.Module):
                 padding=1)
         ])
 
-        # self.scratch = _make_scratch(
-        #     out_channels,
-        #     features,
-        #     groups=1,
-        #     expand=False,
-        # )
         self.scratch = ScratchBlock(out_channels, features, groups=1, expand=False)
 
-        # self.scratch.stem_transpose = None
-
-        # self.scratch.refinenet1 = FeatureFusionBlock(
-        #     features=features,
-        #     activation=nn.ReLU(False),
-        #     deconv=False,
-        #     bn=False,
-        #     expand=False,
-        #     align_corners=True,
-        #     size=None
-        # )
-        # self.scratch.refinenet2 = FeatureFusionBlock(
-        #     features=features,
-        #     activation=nn.ReLU(False),
-        #     deconv=False,
-        #     bn=False,
-        #     expand=False,
-        #     align_corners=True,
-        #     size=None
-        # )
-        # self.scratch.refinenet3 = FeatureFusionBlock(
-        #     features=features,
-        #     activation=nn.ReLU(False),
-        #     deconv=False,
-        #     bn=False,
-        #     expand=False,
-        #     align_corners=True,
-        #     size=None
-        # )
-        # self.scratch.refinenet4 = FeatureFusionBlock(
-        #     features=features,
-        #     activation=nn.ReLU(False),
-        #     deconv=False,
-        #     bn=False,
-        #     expand=False,
-        #     align_corners=True,
-        #     size=None
-        # )
-
-        head_features_1 = features
-        head_features_2 = 32
-
-        if nclass > 1:
-            self.scratch.output_conv = nn.Sequential(
-                nn.Conv2d(head_features_1, head_features_1, kernel_size=3, stride=1, padding=1),
-                nn.ReLU(True),
-                nn.Conv2d(head_features_1, nclass, kernel_size=1, stride=1, padding=0),
-            )
-        else:
-            self.scratch.output_conv1 = nn.Conv2d(head_features_1, head_features_1 // 2, kernel_size=3, stride=1, padding=1)
-
-            self.scratch.output_conv2 = nn.Sequential(
-                nn.Conv2d(head_features_1 // 2, head_features_2, kernel_size=3, stride=1, padding=1),
-                nn.ReLU(True),
-                nn.Conv2d(head_features_2, 1, kernel_size=1, stride=1, padding=0),
-                nn.ReLU(True),
-                nn.Identity(),
-            )
 
     def forward(self, out_features, patch_h, patch_w):
         out = []
@@ -344,21 +285,7 @@ class DPTHead(nn.Module):
 
             out.append(x)
 
-        layer_1, layer_2, layer_3, layer_4 = out
-
-        layer_1_rn = self.scratch.layer1_rn(layer_1)
-        layer_2_rn = self.scratch.layer2_rn(layer_2)
-        layer_3_rn = self.scratch.layer3_rn(layer_3)
-        layer_4_rn = self.scratch.layer4_rn(layer_4)
-
-        path_4 = self.scratch.refinenet4(layer_4_rn, size=layer_3_rn.shape[2:])
-        path_3 = self.scratch.refinenet3(path_4, layer_3_rn, size=layer_2_rn.shape[2:])
-        path_2 = self.scratch.refinenet2(path_3, layer_2_rn, size=layer_1_rn.shape[2:])
-        path_1 = self.scratch.refinenet1(path_2, layer_1_rn)
-
-        out = self.scratch.output_conv1(path_1)
-        out = F.interpolate(out, (int(patch_h * 14), int(patch_w * 14)), mode="bilinear", align_corners=True)
-        out = self.scratch.output_conv2(out)
+        out = self.scratch.forward(out[0], out[1], out[2], out[3], patch_h, patch_w)
 
         return out
 
