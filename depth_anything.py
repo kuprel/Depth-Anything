@@ -230,6 +230,7 @@ class ScratchBlock(nn.Module):
         out = self.output_conv1.forward(path_1)
         out = F.interpolate(out, (int(patch_h * 14), int(patch_w * 14)), mode="bilinear", align_corners=True)
         out = self.output_conv2.forward(out)
+        return out
 
 
 class DPTHead(nn.Module):
@@ -324,12 +325,8 @@ class DepthAnything(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         h, w = x.shape[-2:]
-
         features = self.pretrained.get_intermediate_layers(x, 4, return_class_token=True)
-
-        patch_h, patch_w = h // 14, w // 14
-
-        depth = self.depth_head.forward(features, patch_h, patch_w)
+        depth = self.depth_head.forward(features, h // 14, w // 14)
         depth = F.interpolate(depth, size=(h, w), mode="bilinear", align_corners=True)
         depth = F.relu(depth)
 
